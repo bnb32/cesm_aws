@@ -13,11 +13,14 @@ cmd+="; cd %s" %(env.CESM_DIR)
 cmd+="; git checkout release-cesm2.1.1"
 cmd+="; svn ls https://svn-ccsm-models.cgd.ucar.edu/ww3/release_tags"
 cmd+="; ./manage_externals/checkout_externals"
-cmd+="; cp %s/SrcMods/*xml %s/cime/config/cesm/machines/" %(env.MAIN_DIR,env.CESM_DIR)
-cmd+="; mkdir -p %s/inputdata" %(env.RUN_DIR)
 
 if not args.only_config_copy:
     os.system(cmd)
+
+cmd=" cp %s/SrcMods/*xml %s/cime/config/cesm/machines/" %(env.MAIN_DIR,env.CESM_DIR)
+cmd+="; mkdir -p %s/inputdata" %(env.RUN_DIR)
+
+os.system(cmd)
 
 with open("%s/SrcMods/config_machines.xml" %(env.MAIN_DIR), 'r') as f:
     CONFIG_MACHINES = f.read()

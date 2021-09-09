@@ -203,8 +203,7 @@ using a fortran linker.
   <SFC> gfortran </SFC>
   <SUPPORTS_CXX>TRUE</SUPPORTS_CXX>
   <SLIBS>
-    <append> -lnetcdff -lnetcdf -llapack -lblas </append>
-    <append> -lhdf5 -lhdf5_hl </append>
+    <append> -lhdf5_hl -lhdf5 -lm -ldl -lz -lcurl -lnetcdff -lblas -llapack </append>
   </SLIBS>
 </compiler>
 

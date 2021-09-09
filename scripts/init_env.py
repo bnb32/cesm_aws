@@ -62,7 +62,8 @@ if os.path.isfile('hdf5-1.10.5.tar.gz'):
 cmd='wget https://support.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.10.5.tar.gz; '
 cmd+='tar xvf hdf5-1.10.5.tar.gz; '
 cmd+='cd hdf5-1.10.5; '
-cmd+='./configure %s --with-zlib=/usr/local/zlib --prefix=/usr/local/ --enable-shared --enable-parallel; ' %(CC)
+#cmd+='./configure %s --with-zlib=/usr/local/zlib --prefix=/usr/local/ --enable-shared --enable-parallel; ' %(CC)
+cmd+='./configure %s --with-zlib=/usr/local/zlib --prefix=/usr/local/; ' %(CC)
 cmd+='make; '
 cmd+='sudo make install; '
 cmd+='cd ../; '
@@ -93,7 +94,8 @@ cmd='wget ftp://ftp.unidata.ucar.edu/pub/netcdf/netcdf-c-4.8.0.tar.gz; '
 cmd+='tar xvf netcdf-c-4.8.0.tar.gz; '
 cmd+='cd netcdf-c-4.8.0; '
 #./configure --prefix=/usr/local CPPFLAGS=-I/usr/local/include LDFLAGS=-L/usr/local/lib --enable-parallel-tests --enable-pnetcdf 
-cmd+='./configure %s --prefix=/usr/local CPPFLAGS=-I/usr/local/include LDFLAGS=-L/usr/local/lib --enable-parallel-tests; ' %(CC)
+#cmd+='./configure %s --prefix=/usr/local CPPFLAGS=-I/usr/local/include LDFLAGS=-L/usr/local/lib --enable-parallel-tests; ' %(CC)
+cmd+='./configure %s --prefix=/usr/local CPPFLAGS=-I/usr/local/include LDFLAGS=-L/usr/local/lib; ' %(CC)
 cmd+='make; '
 cmd+='sudo make install; '
 cmd+='cd ../; '
