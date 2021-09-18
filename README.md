@@ -19,8 +19,9 @@ This repo is for setting up cesm on AWS.
 
 4. Run the following commands to install packages and mount storage
 
-    `$ cd cesm_aws`   
-    `$ ./go`  
+    `$ cd cesm_aws`
+    `$ pip install -e .`
+    `$ bash ./go.sh`  
 
 5. Finally run cesm
     

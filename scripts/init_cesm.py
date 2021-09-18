@@ -1,7 +1,6 @@
-import os,sys
-sys.path.append("../")
-sys.path.append("./")
-import environment as env
+import ecrlcesm.environment as env
+
+import os
 import argparse
 
 parser=argparse.ArgumentParser(description="Initialize CESM")

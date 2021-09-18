@@ -1,11 +1,8 @@
+import ecrlcesm.environment as env
+
 import os
 import argparse
-import sys
-sys.path.append('./')
-import environment as env
 import datetime
-
-os.environ["PATH"]+=":%s"%env.CESM_SCRIPTS
 
 parser=argparse.ArgumentParser(description="Run CESM")
 parser.add_argument('-case',default='test',type=str)

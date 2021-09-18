@@ -1,3 +1,5 @@
+import os
+
 USERNAME="ec2-user"
 NETID="bnb32"
 PROJECT_CODE="UCOR0044"
@@ -13,3 +15,6 @@ PRE_PROC_DIR=MAIN_DIR+"/preprocessing"
 CIME_OUT_DIR=SCRATCH_DIR+"/archive"
 CESM_SCRIPTS=CESM_DIR+"/cime/scripts"
 CESM_CAM_OUT_DIR=SCRATCH_DIR+"/archive/%s/atm/hist"
+
+os.environ["PATH"]+=":%s"%env.CESM_SCRIPTS
+

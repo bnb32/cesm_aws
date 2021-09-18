@@ -1,7 +1,7 @@
-import os,sys
+import ecrlcesm.environment as env
+
+import os
 import argparse
-sys.path.append('/home/ec2-user/environment/cesm_aws/')
-import environment as env
 
 parser=argparse.ArgumentParser(description="Plot CESM field")
 parser.add_argument('-infile',required=True,type=str)
