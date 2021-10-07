@@ -16,5 +16,5 @@ CIME_OUT_DIR=SCRATCH_DIR+"/archive"
 CESM_SCRIPTS=CESM_DIR+"/cime/scripts"
 CESM_CAM_OUT_DIR=SCRATCH_DIR+"/archive/%s/atm/hist"
 
-os.environ["PATH"]+=":%s"%env.CESM_SCRIPTS
+os.environ["PATH"]+=f":{CESM_SCRIPTS}"
 

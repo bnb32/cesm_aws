@@ -6,6 +6,7 @@ cmd='sudo yum-config-manager --enable epel; '
 cmd+='sudo yum install openmpi-devel \
                        curl-devel \
                        environment-modules \
+                       netcdf-devel \
                        cmake \
                        ncl \
                        gftp \
