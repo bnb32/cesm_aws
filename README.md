@@ -18,13 +18,16 @@ This repo is for setting up cesm on AWS.
    - Modify environment variables in `environment.py`
 
 4. Run the following commands to install packages and mount storage
-
-    `$ cd cesm_aws` \
-    `$ pip install -e .` \
-    `$ bash ./go.sh`  
+```bash
+$ cd cesm_aws
+$ pip install -e .
+$ bash ./go.sh  
+```
 
 5. Finally run cesm
-    
-    `$ python run_cesm.py -h` for description of parameters  
+```bash    
+$ python run_cesm.py -h
+```
+for description of parameters  
 
 6. cesm output will be in `'/data/<username>/scratch/archive/<case>'`
