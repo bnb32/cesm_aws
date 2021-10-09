@@ -24,10 +24,9 @@ $ pip install -e .
 $ bash ./go.sh  
 ```
 
-5. Finally run cesm
+5. Finally run the following for description of parameters  
 ```bash    
 $ python run_cesm.py -h
 ```
-for description of parameters  
 
 6. cesm output will be in `'/data/<username>/scratch/archive/<case>'`
