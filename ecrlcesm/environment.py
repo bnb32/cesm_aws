@@ -18,3 +18,5 @@ CESM_CAM_OUT_DIR=SCRATCH_DIR+"/archive/%s/atm/hist"
 
 os.environ["PATH"]+=f":{CESM_SCRIPTS}"
 
+ORIG_TOPO_FILE=f'{INPUT_DATA_DIR}/atm/cam/topo/T42_nc3000_Co060_Fi001_PF_nullRR_Nsw042_20180111.nc'
+CESM_TOPO_DIR=f'{ROOT_DIR}/{NETID}/topo_files/'
