@@ -3,6 +3,8 @@ import ecrlcesm.environment as env
 import os
 
 cmd='sudo yum-config-manager --enable epel; '
+#cmd+='sudo yum-config-manager --add-repo https://yum.repos.intel.com/mpi/setup/intel-mpi.repo; '
+#cmd+='sudo yum-config-manager --add-repo https://yum.repos.intel.com/2020/setup/intel-psxe-runtime-2020.repo; '
 cmd+='sudo yum install openmpi-devel \
                        gcc \
                        gfortran \
