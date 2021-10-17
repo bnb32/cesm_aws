@@ -8,18 +8,18 @@ parser.add_argument('-config_only',default=False,action='store_true')
 args=parser.parse_args()
 
 
-cmd=f"rm -rf {env.CESM_DIR}"
-cmd+="; svn ls https://svn-ccsm-models.cgd.ucar.edu/ww3/release_tags"
-cmd+=f"; git clone git@github.com:ESCOMP/cesm.git {env.CESM_DIR}"
-cmd+=f"; cd {env.CESM_DIR}"
-cmd+="; git checkout release-cesm2.2.0"
-cmd+="; ./manage_externals/checkout_externals"
+cmd=f"rm -rf {env.CESM_DIR}; "
+cmd+="svn ls https://svn-ccsm-models.cgd.ucar.edu/ww3/release_tags; "
+cmd+=f"git clone git@github.com:ESCOMP/cesm.git {env.CESM_DIR}; "
+cmd+=f"cd {env.CESM_DIR}; "
+cmd+="git checkout release-cesm2.2.0; "
+cmd+="./manage_externals/checkout_externals; "
 
 if not args.config_only:
     os.system(cmd)
 
-cmd=f" cp {env.MAIN_DIR}/SrcMods/*xml {env.CESM_DIR}/cime/config/cesm/machines/"
-cmd+=f"; mkdir -p {env.RUN_DIR}/inputdata"
+cmd=f" cp {env.MAIN_DIR}/SrcMods/*xml {env.CESM_DIR}/cime/config/cesm/machines/; "
+cmd+=f"mkdir -p {env.RUN_DIR}/inputdata; "
 
 os.system(cmd)
 
