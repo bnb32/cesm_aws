@@ -1,5 +1,5 @@
 import ecrlgcm.environment
-from ecrlgcm.misc import get_logger,land_year_range,min_land_year,max_land_year
+from ecrlgcm.misc import get_logger,land_year_range,min_land_year,max_land_year,get_base_topofile
 from ecrlgcm.preprocessing import interpolate_co2, modify_topofile, modify_co2file
 from ecrlgcm.experiment import Experiment
 
@@ -11,10 +11,9 @@ from datetime import date
 logger = get_logger()
 
 experiment_dictionary = {
-        #'cam':{'compset':'2000_CAM60_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42_T42','custom':True},
-        'cam':{'compset':'1850_CAM60_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42_T42','custom':True},
-        'B1850':{'compset':'B1850','res':'f19_g17','custom':False},
-        'scam':{'compset':'2000_CAM60%SCAM_CLM50%SP_CICE%PRES_DOCN%DOM_SROF_SGLC_SWAV','res':'T42_T42','custom':True},
+        'cam':{'compset':'1850_CAM60_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'B1850CN':{'compset':'1850_CAM60_CLM50%CN_SICE_POP2_RTM_SGLC_SWAV','res':'f19_g16','custom':True},
+        'B1850SP':{'compset':'1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
         'aqua':{'compset':'2000_CAM60_SLND_SICE_DOCN%SOMAQP_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
         'baro':{'compset':'2000_CAM%DABIP04_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
         'moist_hs':{'compset':'1850_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
@@ -30,25 +29,20 @@ parser.add_argument('-land_year',default=0,type=land_year_range,
                     metavar=f'[{min_land_year}-{max_land_year}]',
                     help="Years prior to current era in units of Ma")
 parser.add_argument('-case',default='test',type=str)
-parser.add_argument('-ntasks',default=32,type=int)
+parser.add_argument('-ntasks',default=96,type=int)
 parser.add_argument('-nthrds',default=8,type=int)
 parser.add_argument('-start_date',default="0001-01-01")
 parser.add_argument('-step_type',default='ndays')
 parser.add_argument('-nsteps',default=10,type=int)
-parser.add_argument('-data_dir',default=os.environ['CESM_INPUT_DATA_DIR'])
-parser.add_argument('-cime_out_dir',default=os.environ['CIME_OUT_DIR'])
 parser.add_argument('-restart',default=False,action='store_true')
 parser.add_argument('-setup',default=False,action='store_true')
 parser.add_argument('-build',default=False,action='store_true')
 parser.add_argument('-run',default=False,action='store_true')
 parser.add_argument('-run_all',default=False,action='store_true')
+parser.add_argument('-remap',default=False,action='store_true')
 args=parser.parse_args()
 
 cwd=os.getcwd()
-
-cesmexp = Experiment(type='cesm',multiplier=args.multiplier,land_year=args.land_year)
-
-args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
 
 if args.exp_type not in experiment_dictionary:
     logger.error("Select valid case")
@@ -58,12 +52,10 @@ else:
     args.compset = experiment_dictionary[args.exp_type]['compset']
     args.custom = experiment_dictionary[args.exp_type]['custom']
 
-if args.res.split('_')[0][0:3]=='T42':
-    os.environ['ORIG_TOPO_FILE']=os.environ['T42_TOPO_FILE']
-if args.res.split('_')[0][0:3]=='f19':
-    os.environ['ORIG_TOPO_FILE']=os.environ['f19_TOPO_FILE']
-if args.res.split('_')[0][0:3]=='f09':
-    os.environ['ORIG_TOPO_FILE']=os.environ['f09_TOPO_FILE']
+cesmexp = Experiment(type='cesm',multiplier=args.multiplier,land_year=args.land_year,res=args.res)
+
+args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
+base_topofile = get_base_topofile(args.res)
 
 os.system(f'mkdir -p {os.environ["CESM_TOPO_DIR"]}')
 os.system(f'mkdir -p {os.environ["CESM_CO2_DIR"]}')
@@ -73,9 +65,10 @@ co2_file = f"{os.environ['CESM_CO2_DIR']}/{cesmexp.co2_file}"
 os.environ['ORIG_CESM_CO2_FILE']=f'{os.environ["CESM_INPUT_DATA_DIR"]}/atm/cam/inic/gaus/cami_0000-01-01_64x128_L30_c090102.nc'
 
 if args.run_all or args.run:
-    modify_topofile(land_year=args.land_year,
-                    infile=os.environ['ORIG_TOPO_FILE'],
-                    outfile=topo_file)
+    if not os.path.exists(topo_file) or args.remap:
+        modify_topofile(land_year=args.land_year,
+                        infile=base_topofile,
+                        outfile=topo_file)
     modify_co2file(land_year=args.land_year,
                    multiplier=args.multiplier,
                    infile=os.environ['ORIG_CESM_CO2_FILE'],
@@ -84,7 +77,9 @@ if args.run_all or args.run:
 if args.co2_value is None:
     args.co2_value = args.multiplier*interpolate_co2(args.land_year)
 
+args.orbit_year = date.today().year-args.land_year*10**6
 logger.info(f'Using CO2 Value {args.co2_value} ppm')
+logger.info(f'Using orbital year {args.orbit_year}')
 
 def edit_namelists():
         
@@ -139,11 +134,11 @@ def edit_namelists():
     logger.info(f"**Changing namelist file: {nl_cpl_file}**")
     with open(nl_cpl_file,'w') as f:
         f.write('orb_mode="fixed_year"\n')
-        f.write(f'orb_iyear={date.today().year-args.land_year*10**6}\n')
+        f.write(f'orb_iyear={args.orbit_year}\n')
         #f.write(f'orb_iyear_align={(args.start_date).split("-")[0]}\n')
     f.close()    
 
-create_case_cmd=f'create_newcase --case {args.case} --res {args.res} --mach aws_c5 --compset {args.compset} --handle-preexisting-dirs r --output-root {args.cime_out_dir}'
+create_case_cmd=f'create_newcase --case {args.case} --res {args.res} --mach aws_c5 --compset {args.compset} --handle-preexisting-dirs r --output-root {os.environ["CIME_OUT_DIR"]}'
 
 if args.custom: create_case_cmd+=' --run-unsupported'
 
