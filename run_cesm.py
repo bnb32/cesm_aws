@@ -1,6 +1,6 @@
 import ecrlgcm.environment
 from ecrlgcm.misc import get_logger,land_year_range,min_land_year,max_land_year,get_base_topofile
-from ecrlgcm.preprocessing import interpolate_co2, modify_topofile, modify_co2file
+from ecrlgcm.preprocessing import eccentricity, obliquity, solar_constant, interpolate_co2, modify_solarfile, modify_topofile, modify_co2file
 from ecrlgcm.experiment import Experiment
 
 import os
@@ -52,34 +52,40 @@ else:
     args.compset = experiment_dictionary[args.exp_type]['compset']
     args.custom = experiment_dictionary[args.exp_type]['custom']
 
-cesmexp = Experiment(type='cesm',multiplier=args.multiplier,land_year=args.land_year,res=args.res)
+cesmexp = Experiment(gcm_type='cesm',
+                     multiplier=args.multiplier,
+                     land_year=args.land_year,
+                     res=args.res,
+                     exp_type=args.exp_type)
 
 args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
 base_topofile = get_base_topofile(args.res)
 
-os.system(f'mkdir -p {os.environ["CESM_TOPO_DIR"]}')
-os.system(f'mkdir -p {os.environ["CESM_CO2_DIR"]}')
 topo_file = f"{os.environ['CESM_TOPO_DIR']}/{cesmexp.land_file}"
 co2_file = f"{os.environ['CESM_CO2_DIR']}/{cesmexp.co2_file}"
-
-os.environ['ORIG_CESM_CO2_FILE']=f'{os.environ["CESM_INPUT_DATA_DIR"]}/atm/cam/inic/gaus/cami_0000-01-01_64x128_L30_c090102.nc'
+solar_file = f"{os.environ['CESM_SOLAR_DIR']}/{cesmexp.solar_file}"
 
 if args.run_all or args.run:
     if not os.path.exists(topo_file) or args.remap:
         modify_topofile(land_year=args.land_year,
                         infile=base_topofile,
                         outfile=topo_file)
-    modify_co2file(land_year=args.land_year,
-                   multiplier=args.multiplier,
-                   infile=os.environ['ORIG_CESM_CO2_FILE'],
-                   outfile=co2_file)
+    if not os.path.exists(co2_file) or args.remap:
+        modify_co2file(land_year=args.land_year,
+                       multiplier=args.multiplier,
+                       infile=os.environ['ORIG_CESM_CO2_FILE'],
+                       outfile=co2_file)
+    if not os.path.exists(solar_file) or args.remap:
+        modify_solarfile(land_year=args.land_year,
+                         infile=os.environ['ORIG_CESM_SOLAR_FILE'],
+                         outfile=solar_file)
 
 if args.co2_value is None:
     args.co2_value = args.multiplier*interpolate_co2(args.land_year)
 
 args.orbit_year = date.today().year-args.land_year*10**6
 logger.info(f'Using CO2 Value {args.co2_value} ppm')
-logger.info(f'Using orbital year {args.orbit_year}')
+logger.info(f'Using orbital year {args.orbit_year} B.P.')
 
 def edit_namelists():
         
@@ -113,6 +119,8 @@ def edit_namelists():
     contents.append('use_topo_file=.true.\n')
     contents.append(f'bnd_topo="{topo_file}"\n')
     contents.append(f'eul_divdampn=1.0\n') 
+    contents.append(f"solar_irrad_data_file='{solar_file}'\n")
+    #contents.append(f'solar_const={solar_constant(args.land_year)}\n')
     #contents.append('fv_nspltvrm=4\n')
     #contents.append('fv_nspltrac=8\n')
     #contents.append('fv_nsplit=8\n')
@@ -120,9 +128,10 @@ def edit_namelists():
     
     if args.exp_type in ['moist_hs','dry_hs']:
         contents.append(f"ncdata='{co2_file}'\n")
-    #contents.append(f"chem_use_chemtrop=.true.'\n")
+        contents.append(f"rad_climate='N:CO2:CO2'\n")
     #contents.append(f"mode_defs='mam_mode4:primary_carbon:='\n")
-    #contents.append(f"rad_climate='N:CO2:CO2'\n")
+    #contents.append(f"radiation_scheme='rrtmg'\n")
+    #contents.append(f"radiation_scheme='rrtmg'\n")
     contents.append(f"co2vmr={args.co2_value}e-6\n")
     contents.append(f"co2vmr_rad={args.co2_value}e-6\n")
 
@@ -134,7 +143,11 @@ def edit_namelists():
     logger.info(f"**Changing namelist file: {nl_cpl_file}**")
     with open(nl_cpl_file,'w') as f:
         f.write('orb_mode="fixed_year"\n')
-        f.write(f'orb_iyear={args.orbit_year}\n')
+        #f.write(f'orb_iyear={args.orbit_year}\n')
+        #f.write(f'orb_mvelp={}\n')
+        f.write(f'orb_iyear=0\n')
+        f.write(f'orb_eccen={eccentricity(args.land_year)}\n')
+        f.write(f'orb_obliq={obliquity(args.land_year)}\n')
         #f.write(f'orb_iyear_align={(args.start_date).split("-")[0]}\n')
     f.close()    
 
