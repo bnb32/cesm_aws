@@ -1,6 +1,6 @@
 import ecrlgcm.environment
 from ecrlgcm.misc import get_logger,land_year_range,min_land_year,max_land_year,get_base_topofile
-from ecrlgcm.preprocessing import eccentricity, obliquity, solar_constant, interpolate_co2, modify_solarfile, modify_topofile, modify_co2file
+from ecrlgcm.preprocessing import eccentricity, obliquity, solar_constant, interpolate_co2, modify_solarfile, modify_topofile, modify_co2file, modify_landfracfile
 from ecrlgcm.experiment import Experiment
 
 import os
@@ -12,7 +12,9 @@ logger = get_logger()
 
 experiment_dictionary = {
         'cam':{'compset':'1850_CAM60_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'B1850CN':{'compset':'1850_CAM60_CLM50%CN_SICE_POP2_RTM_SGLC_SWAV','res':'f19_g16','custom':True},
+        #'B1850CN':{'compset':'1850_CAM60_CLM50%CN_SICE_POP2_RTM_SGLC_SWAV','res':'f19_g16','custom':True},
+        'B1850CN':{'compset':'1850_CAM60_CLM50%CN_SICE_POP2_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        #'B1850CN':{'compset':'1850_CAM60_CLM50%CN_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
         'B1850SP':{'compset':'1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
         'aqua':{'compset':'2000_CAM60_SLND_SICE_DOCN%SOMAQP_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
         'baro':{'compset':'2000_CAM%DABIP04_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
@@ -33,7 +35,7 @@ parser.add_argument('-ntasks',default=96,type=int)
 parser.add_argument('-nthrds',default=8,type=int)
 parser.add_argument('-start_date',default="0001-01-01")
 parser.add_argument('-step_type',default='ndays')
-parser.add_argument('-nsteps',default=10,type=int)
+parser.add_argument('-nsteps',default=3,type=int)
 parser.add_argument('-restart',default=False,action='store_true')
 parser.add_argument('-setup',default=False,action='store_true')
 parser.add_argument('-build',default=False,action='store_true')
@@ -61,24 +63,24 @@ cesmexp = Experiment(gcm_type='cesm',
 args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
 base_topofile = get_base_topofile(args.res)
 
-topo_file = f"{os.environ['CESM_TOPO_DIR']}/{cesmexp.land_file}"
-co2_file = f"{os.environ['CESM_CO2_DIR']}/{cesmexp.co2_file}"
-solar_file = f"{os.environ['CESM_SOLAR_DIR']}/{cesmexp.solar_file}"
-
 if args.run_all or args.run:
-    if not os.path.exists(topo_file) or args.remap:
+    if not os.path.exists(cesmexp.topo_file) or args.remap:
         modify_topofile(land_year=args.land_year,
                         infile=base_topofile,
-                        outfile=topo_file)
-    if not os.path.exists(co2_file) or args.remap:
+                        outfile=cesmexp.topo_file)
+    if not os.path.exists(cesmexp.co2_file) or args.remap:
         modify_co2file(land_year=args.land_year,
                        multiplier=args.multiplier,
                        infile=os.environ['ORIG_CESM_CO2_FILE'],
-                       outfile=co2_file)
-    if not os.path.exists(solar_file) or args.remap:
+                       outfile=cesmexp.co2_file)
+    if not os.path.exists(cesmexp.solar_file) or args.remap:
         modify_solarfile(land_year=args.land_year,
                          infile=os.environ['ORIG_CESM_SOLAR_FILE'],
-                         outfile=solar_file)
+                         outfile=cesmexp.solar_file)
+    if not os.path.exists(cesmexp.landfrac_file) or args.remap:
+        modify_landfracfile(topo_file=cesmexp.topo_file,
+                            infile=os.environ['ORIG_CESM_LANDFRAC_FILE'],
+                            outfile=cesmexp.landfrac_file)
 
 if args.co2_value is None:
     args.co2_value = args.multiplier*interpolate_co2(args.land_year)
@@ -86,70 +88,49 @@ if args.co2_value is None:
 args.orbit_year = date.today().year-args.land_year*10**6
 logger.info(f'Using CO2 Value {args.co2_value} ppm')
 logger.info(f'Using orbital year {args.orbit_year} B.P.')
+logger.info(f'Using solar constant {solar_constant(args.land_year)} W/m^2')
 
 def edit_namelists():
         
     os.chdir(cwd)
     nl_cam_file=f"{args.case}/user_nl_cam"
     nl_cpl_file=f"{args.case}/user_nl_cpl"
+    nl_clm_file=f"{args.case}/user_nl_clm"
                     
-    contents=[]
-    contents.append('\n')
-
-    if args.step_type=='ndays':
-        contents.append('nhtfrq=-24\n')
-        contents.append('mfilt=365\n')
-    else:
-        contents.append('nhtfrq=0\n')
-        contents.append('mfilt=12\n')
-    
-    #contents.append("cam_chempkg='trop_mam4'\n") 
-    #contents.append("cam_physpkg='held_suarez'\n") 
-    #contents.append('cld_macmic_num_steps=1\n')
-    #contents.append("use_hetfrz_classnuc=.false.\n")
-    #contents.append('do_clubb_sgs=.false.\n') 
-    #contents.append("deep_scheme='off'\n") 
-    #contents.append("eddy_scheme='HB'\n") 
-    #contents.append("macrop_scheme='none'\n") 
-    #contents.append("microp_scheme='NONE'\n") 
-    #contents.append("shallow_scheme='Hack'\n") 
-    #contents.append('nucleate_ice_use_troplev=.false.\n')
-    #contents.append('use_preexisting_ice=.false.\n')
-    contents.append('state_debug_checks=.true.\n')
-    contents.append('use_topo_file=.true.\n')
-    contents.append(f'bnd_topo="{topo_file}"\n')
-    contents.append(f'eul_divdampn=1.0\n') 
-    contents.append(f"solar_irrad_data_file='{solar_file}'\n")
-    #contents.append(f'solar_const={solar_constant(args.land_year)}\n')
-    #contents.append('fv_nspltvrm=4\n')
-    #contents.append('fv_nspltrac=8\n')
-    #contents.append('fv_nsplit=8\n')
-    #contents.append(f"cldfrc2m_do_subgrid_growth=.false.\n")
-    
-    if args.exp_type in ['moist_hs','dry_hs']:
-        contents.append(f"ncdata='{co2_file}'\n")
-        contents.append(f"rad_climate='N:CO2:CO2'\n")
-    #contents.append(f"mode_defs='mam_mode4:primary_carbon:='\n")
-    #contents.append(f"radiation_scheme='rrtmg'\n")
-    #contents.append(f"radiation_scheme='rrtmg'\n")
-    contents.append(f"co2vmr={args.co2_value}e-6\n")
-    contents.append(f"co2vmr_rad={args.co2_value}e-6\n")
-
     logger.info(f"**Changing namelist file: {nl_cam_file}**")
     with open(nl_cam_file,'w') as f:
-        for l in contents: f.write(l)
+        if args.step_type=='ndays':
+            f.write('nhtfrq=-24\n')
+            f.write('mfilt=365\n')
+        else:
+            f.write('nhtfrq=0\n')
+            f.write('mfilt=12\n')
+        f.write(f'state_debug_checks=.true.\n')
+        f.write(f'use_topo_file=.true.\n')
+        f.write(f'bnd_topo="{cesmexp.topo_file}"\n')
+        f.write(f'eul_divdampn=1.0\n') 
+        f.write(f"solar_irrad_data_file='{cesmexp.solar_file}'\n")
+        f.write(f"co2vmr={args.co2_value}e-6\n")
+        f.write(f"co2vmr_rad={args.co2_value}e-6\n")
+    
+        if args.exp_type in ['moist_hs','dry_hs']:
+            f.write(f"ncdata='{cesmexp.co2_file}'\n")
+            f.write(f"rad_climate='N:CO2:CO2'\n")
     f.close()
     
     logger.info(f"**Changing namelist file: {nl_cpl_file}**")
     with open(nl_cpl_file,'w') as f:
         f.write('orb_mode="fixed_year"\n')
-        #f.write(f'orb_iyear={args.orbit_year}\n')
-        #f.write(f'orb_mvelp={}\n')
         f.write(f'orb_iyear=0\n')
         f.write(f'orb_eccen={eccentricity(args.land_year)}\n')
         f.write(f'orb_obliq={obliquity(args.land_year)}\n')
-        #f.write(f'orb_iyear_align={(args.start_date).split("-")[0]}\n')
     f.close()    
+
+    logger.info(f"**Changing namelist file: {nl_clm_file}**")
+    with open(nl_clm_file,'w') as f:
+        f.write('fatmlndfrc="{cesmexp.landfrac_file}"\n')
+    f.close()    
+
 
 create_case_cmd=f'create_newcase --case {args.case} --res {args.res} --mach aws_c5 --compset {args.compset} --handle-preexisting-dirs r --output-root {os.environ["CIME_OUT_DIR"]}'
 
