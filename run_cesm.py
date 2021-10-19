@@ -1,7 +1,7 @@
 import ecrlgcm.environment
 from ecrlgcm.misc import get_logger,land_year_range,min_land_year,max_land_year,get_base_topofile
 from ecrlgcm.preprocessing import eccentricity, obliquity, solar_constant, interpolate_co2
-from ecrlgcm.preprocessing import modify_solar_file, modify_topo_file, modify_co2_file, modify_landfrac_file
+from ecrlgcm.preprocessing import modify_solar_file, modify_topo_file, modify_co2_file, modify_landfrac_file, modify_oceanfrac_file
 from ecrlgcm.experiment import Experiment
 
 import os
@@ -64,28 +64,33 @@ cesmexp = Experiment(gcm_type='cesm',
 args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
 base_topofile = get_base_topofile(args.res)
 
-if args.run_all or args.run:
+if args.run_all or args.run or args.remap:
     if not os.path.exists(cesmexp.topo_file) or args.remap:
+        logger.info(f'Modifying topo_file: {base_topofile}')
         modify_topo_file(land_year=args.land_year,
                          infile=base_topofile,
                          outfile=cesmexp.topo_file)
     if not os.path.exists(cesmexp.co2_file) or args.remap:
+        logger.info(f'Modifying co2_file: {os.environ["ORIG_CESM_CO2_FILE"]}')
         modify_co2_file(land_year=args.land_year,
                         multiplier=args.multiplier,
                         infile=os.environ['ORIG_CESM_CO2_FILE'],
                         outfile=cesmexp.co2_file)
     if not os.path.exists(cesmexp.solar_file) or args.remap:
+        logger.info(f'Modifying solar_file: {os.environ["ORIG_CESM_SOLAR_FILE"]}')
         modify_solar_file(land_year=args.land_year,
                           infile=os.environ['ORIG_CESM_SOLAR_FILE'],
                           outfile=cesmexp.solar_file)
     if not os.path.exists(cesmexp.landfrac_file) or args.remap:
+        logger.info(f'Modifying landfrac_file: {os.environ["ORIG_CESM_LANDFRAC_FILE"]}')
         modify_landfrac_file(topo_file=cesmexp.topo_file,
                              infile=os.environ['ORIG_CESM_LANDFRAC_FILE'],
                              outfile=cesmexp.landfrac_file)
     if not os.path.exists(cesmexp.oceanfrac_file) or args.remap:
-        modify_oceanfrac_file(topo_file=cesmexp.topo_file,
-                             infile=os.environ['ORIG_CESM_OCEANFRAC_FILE'],
-                             outfile=cesmexp.oceanfrac_file)
+        logger.info(f'Modifying oceanfrac_file: {os.environ["ORIG_CESM_OCEANFRAC_FILE"]}')
+        modify_oceanfrac_file(ocn_file=cesmexp.topo_file,
+                              infile=os.environ['ORIG_CESM_OCEANFRAC_FILE'],
+                              outfile=cesmexp.oceanfrac_file)
 
 if args.co2_value is None:
     args.co2_value = args.multiplier*interpolate_co2(args.land_year)
@@ -148,13 +153,13 @@ change_xml_cmd+=f'STOP_N={args.nsteps},'
 change_xml_cmd+=f'REST_N={args.nsteps//5+1},'
 change_xml_cmd+=f'CCSM_CO2_PPMV={args.co2_value},'
 change_xml_cmd+=f'ATM_DOMAIN_PATH="",'
-change_xml_cmd+=f'ATM_DOMAIN_FILE={cesmexp.landfrac_file}'
+change_xml_cmd+=f'ATM_DOMAIN_FILE="{cesmexp.landfrac_file}",'
 change_xml_cmd+=f'LND_DOMAIN_PATH="",'
-change_xml_cmd+=f'LND_DOMAIN_FILE={cesmexp.landfrac_file}'
+change_xml_cmd+=f'LND_DOMAIN_FILE="{cesmexp.landfrac_file}",'
 change_xml_cmd+=f'OCN_DOMAIN_PATH="",'
-change_xml_cmd+=f'OCN_DOMAIN_FILE={cesmexp.oceanfrac_file}'
+change_xml_cmd+=f'OCN_DOMAIN_FILE="{cesmexp.oceanfrac_file}",'
 change_xml_cmd+=f'ICE_DOMAIN_PATH="",'
-change_xml_cmd+=f'ICE_DOMAIN_FILE={cesmexp.oceanfrac_file}'
+change_xml_cmd+=f'ICE_DOMAIN_FILE="{cesmexp.oceanfrac_file}"'
 #change_xml_cmd+=f'RUN_STARTDATE={args.start_date}'
 
 if args.setup or args.run_all or not os.path.exists(args.case):
