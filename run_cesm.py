@@ -1,22 +1,29 @@
 import ecrlgcm.environment
 from ecrlgcm.misc import get_logger,land_year_range,min_land_year,max_land_year,get_base_topofile
 from ecrlgcm.preprocessing import eccentricity, obliquity, solar_constant, interpolate_co2
-from ecrlgcm.preprocessing import modify_solar_file, modify_topo_file, modify_co2_file, modify_landfrac_file, modify_oceanfrac_file
+from ecrlgcm.preprocessing import modify_input_files
 from ecrlgcm.experiment import Experiment
 
 import os
 import argparse
 import xml.etree.ElementTree as ET
+import numpy as np
 from datetime import date
+
 
 logger = get_logger()
 
 experiment_dictionary = {
-        'cam':{'compset':'1850_CAM60_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam':{'compset':'F1850_CAM60_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmcn':{'compset':'F1850_CAM60_CLM50%CN_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmsp':{'compset':'1850_CAM60_CLM50%SP_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_dlnd':{'compset':'1850_CAM60_DLND%SCPL_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmcn_docn':{'compset':'1850_CAM60_CLM50%CN_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmsp_docn':{'compset':'1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
         #'B1850CN':{'compset':'1850_CAM60_CLM50%CN_SICE_POP2_RTM_SGLC_SWAV','res':'f19_g16','custom':True},
         'B1850CN':{'compset':'1850_CAM60_CLM50%CN_SICE_POP2_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
         #'B1850CN':{'compset':'1850_CAM60_CLM50%CN_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'B1850SP':{'compset':'1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'B1850SP':{'compset':'1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g17','custom':True},
         'aqua':{'compset':'2000_CAM60_SLND_SICE_DOCN%SOMAQP_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
         'baro':{'compset':'2000_CAM%DABIP04_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
         'moist_hs':{'compset':'1850_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
@@ -24,7 +31,7 @@ experiment_dictionary = {
         }
 
 parser=argparse.ArgumentParser(description="Run CESM")
-parser.add_argument('-exp_type',default='cam',
+parser.add_argument('-exp_type',default='B1850CN',
                     choices=[e for e in experiment_dictionary])
 parser.add_argument('-multiplier',default=1.0,type=float,help="CO2 Multiplier")
 parser.add_argument('-co2_value',default=None, help="CO2 Value")
@@ -62,40 +69,13 @@ cesmexp = Experiment(gcm_type='cesm',
                      exp_type=args.exp_type)
 
 args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
-base_topofile = get_base_topofile(args.res)
 
-if args.run_all or args.run or args.remap:
-    if not os.path.exists(cesmexp.topo_file) or args.remap:
-        logger.info(f'Modifying topo_file: {base_topofile}')
-        modify_topo_file(land_year=args.land_year,
-                         infile=base_topofile,
-                         outfile=cesmexp.topo_file)
-    if not os.path.exists(cesmexp.co2_file) or args.remap:
-        logger.info(f'Modifying co2_file: {os.environ["ORIG_CESM_CO2_FILE"]}')
-        modify_co2_file(land_year=args.land_year,
-                        multiplier=args.multiplier,
-                        infile=os.environ['ORIG_CESM_CO2_FILE'],
-                        outfile=cesmexp.co2_file)
-    if not os.path.exists(cesmexp.solar_file) or args.remap:
-        logger.info(f'Modifying solar_file: {os.environ["ORIG_CESM_SOLAR_FILE"]}')
-        modify_solar_file(land_year=args.land_year,
-                          infile=os.environ['ORIG_CESM_SOLAR_FILE'],
-                          outfile=cesmexp.solar_file)
-    if not os.path.exists(cesmexp.landfrac_file) or args.remap:
-        logger.info(f'Modifying landfrac_file: {os.environ["ORIG_CESM_LANDFRAC_FILE"]}')
-        modify_landfrac_file(topo_file=cesmexp.topo_file,
-                             infile=os.environ['ORIG_CESM_LANDFRAC_FILE'],
-                             outfile=cesmexp.landfrac_file)
-    if not os.path.exists(cesmexp.oceanfrac_file) or args.remap:
-        logger.info(f'Modifying oceanfrac_file: {os.environ["ORIG_CESM_OCEANFRAC_FILE"]}')
-        modify_oceanfrac_file(ocn_file=cesmexp.topo_file,
-                              infile=os.environ['ORIG_CESM_OCEANFRAC_FILE'],
-                              outfile=cesmexp.oceanfrac_file)
+modify_input_files(cesmexp,remap=args.remap)
 
 if args.co2_value is None:
     args.co2_value = args.multiplier*interpolate_co2(args.land_year)
 
-args.orbit_year = date.today().year-args.land_year*10**6
+args.orbit_year = args.land_year*10**6-date.today().year
 logger.info(f'Using CO2 Value {args.co2_value} ppm')
 logger.info(f'Using orbital year {args.orbit_year} B.P.')
 logger.info(f'Using solar constant {solar_constant(args.land_year)} W/m^2')
@@ -106,6 +86,9 @@ def edit_namelists():
     nl_cam_file=f"{args.case}/user_nl_cam"
     nl_cpl_file=f"{args.case}/user_nl_cpl"
     nl_clm_file=f"{args.case}/user_nl_clm"
+    nl_pop_file=f"{args.case}/user_nl_pop"
+    nl_docn_file=f"{args.case}/user_nl_docn"
+    nl_ice_file=f"{args.case}/user_nl_ice"
                     
     logger.info(f"**Changing namelist file: {nl_cam_file}**")
     with open(nl_cam_file,'w') as f:
@@ -115,31 +98,82 @@ def edit_namelists():
         else:
             f.write('nhtfrq=0\n')
             f.write('mfilt=12\n')
-        f.write(f'state_debug_checks=.true.\n')
         f.write(f'use_topo_file=.true.\n')
         f.write(f'bnd_topo="{cesmexp.topo_file}"\n')
-        f.write(f'eul_divdampn=1.0\n') 
         f.write(f"solar_irrad_data_file='{cesmexp.solar_file}'\n")
         f.write(f"co2vmr={args.co2_value}e-6\n")
         f.write(f"co2vmr_rad={args.co2_value}e-6\n")
-    
-        if args.exp_type in ['moist_hs','dry_hs']:
-            f.write(f"ncdata='{cesmexp.co2_file}'\n")
-            f.write(f"rad_climate='N:CO2:CO2'\n")
+        #f.write(f'state_debug_checks=.true.\n')
+        #f.write(f'eul_divdampn=1.0\n') 
+        #f.write(f'eul_nsplit=8\n') 
+        #f.write(f'fv_nsplit=8\n') 
+        #f.write(f'iradlw=4\n') 
+        #f.write(f'irad_always=4\n') 
+        #f.write(f'use_rad_dt_cosz=.true.\n') 
+        #f.write(f"prescribed_strataero_use_chemtrop=.false.\n")
     f.close()
     
     logger.info(f"**Changing namelist file: {nl_cpl_file}**")
     with open(nl_cpl_file,'w') as f:
         f.write('orb_mode="fixed_year"\n')
-        f.write(f'orb_iyear=0\n')
+        f.write(f'orb_iyear=1850\n')
         f.write(f'orb_eccen={eccentricity(args.land_year)}\n')
         f.write(f'orb_obliq={obliquity(args.land_year)}\n')
     f.close()    
 
-    #logger.info(f"**Changing namelist file: {nl_clm_file}**")
-    #with open(nl_clm_file,'w') as f:
-    #    f.write('fatmlndfrc="{cesmexp.landfrac_file}"\n')
-    #f.close()    
+    logger.info(f"**Changing namelist file: {nl_clm_file}**")
+    with open(nl_clm_file,'w') as f:
+        f.write(f"urban_hac='OFF'\n")
+        f.write(f'fsurdat="{cesmexp.landplant_file}"\n')
+        #f.write(f"glcmec_downscale_longwave=.false.\n")
+        #f.write(f"melt_non_icesheet_ice_runoff=.false.\n")
+        #f.write(f"use_subgrid_fluxes=.false.\n")
+    f.close()    
+    
+    logger.info(f"**Changing namelist file: {nl_docn_file}**")
+    with open(nl_docn_file,'w') as f:
+        f.write(f'topography_file="{cesmexp.oceantopo_file}"\n')
+        f.write(f'init_ts_file="{cesmexp.init_ocean_file}"\n')
+    f.close()
+    '''
+    logger.info(f"**Changing namelist file: {nl_pop_file}**")
+    with open(nl_pop_file,'w') as f:
+        f.write(f'region_mask_file="{cesmexp.oceanmask_file}"\n')
+        #f.write(f'region_info_file="{os.environ["OCEAN_REGION_MASK_FILE"]}"\n')
+        f.write(f'topography_file="{cesmexp.oceantopo_file}"\n')
+        f.write(f"lat_aux_grid_type='user-specified'\n")
+        f.write(f"lat_aux_begin=-90.0\n")
+        f.write(f"lat_aux_end=90.0\n")
+        f.write(f"n_lat_aux_grid=180\n")
+        f.write(f"n_heat_trans_requested=.true.\n")
+        f.write(f"n_salt_trans_requested=.true.\n")
+        f.write(f"n_transport_reg=1\n")
+        f.write(f"moc_requested=.true.\n")
+        f.write(f"dt_count=30\n")
+        f.write(f'lhoriz_varying_bckgrnd=.false.\n')
+        f.write(f'overflows_on=.false.\n')
+        f.write(f'overflows_interactive=.false.\n')
+        f.write(f'ldiag_velocity=.false.\n')
+        f.write(f'ltidal_mixing=.false.\n')
+        f.write(f'bckgrnd_vdc1=0.524\n')
+        f.write(f'bckgrnd_vdc2=0.313\n')
+        f.write(f"sw_absorption_type='jerlov'\n")
+        f.write(f'jerlov_water_type=3\n')
+        f.write(f"chl_option='file'\n")
+        f.write(f"chl_filename='unknown-chl'\n")
+        f.write(f"chl_file_fmt='bin'\n")
+        f.write(f"init_ts_option='mean'\n")
+        f.write(f"num_tidal_min_regions=0\n")
+        #f.write(f"init_ts_option='ccsm_startup'\n")
+        #f.write(f'init_ts_file="{cesmexp.init_ocean_file}"\n')
+        f.write(f"init_ts_file_fmt='bin'\n")
+    f.close()    
+    '''
+    logger.info(f"**Changing namelist file: {nl_ice_file}**")
+    with open(nl_ice_file,'w') as f:
+        f.write(f"ice_ic='none'\n")
+        f.write(f"xndt_dyn=2\n")
+    f.close()    
 
 
 create_case_cmd=f'create_newcase --case {args.case} --res {args.res} --mach aws_c5 --compset {args.compset} --handle-preexisting-dirs r --output-root {os.environ["CIME_OUT_DIR"]}'
@@ -150,16 +184,18 @@ change_xml_cmd='./xmlchange '
 change_xml_cmd+=f'NTASKS={args.ntasks},'
 change_xml_cmd+=f'STOP_OPTION={args.step_type},'
 change_xml_cmd+=f'STOP_N={args.nsteps},'
-change_xml_cmd+=f'REST_N={args.nsteps//5+1},'
-change_xml_cmd+=f'CCSM_CO2_PPMV={args.co2_value},'
+change_xml_cmd+=f'REST_N={args.nsteps//5+1}; '
+change_xml_cmd+=f'./xmlchange --file env_build.xml DEBUG=TRUE; '
+
+change_xml_cmd+=f'./xmlchange CCSM_CO2_PPMV={args.co2_value},'
 change_xml_cmd+=f'ATM_DOMAIN_PATH="",'
 change_xml_cmd+=f'ATM_DOMAIN_FILE="{cesmexp.landfrac_file}",'
 change_xml_cmd+=f'LND_DOMAIN_PATH="",'
-change_xml_cmd+=f'LND_DOMAIN_FILE="{cesmexp.landfrac_file}",'
-change_xml_cmd+=f'OCN_DOMAIN_PATH="",'
-change_xml_cmd+=f'OCN_DOMAIN_FILE="{cesmexp.oceanfrac_file}",'
-change_xml_cmd+=f'ICE_DOMAIN_PATH="",'
-change_xml_cmd+=f'ICE_DOMAIN_FILE="{cesmexp.oceanfrac_file}"'
+change_xml_cmd+=f'LND_DOMAIN_FILE="{cesmexp.landfrac_file}"; '
+change_xml_cmd+=f'./xmlchange OCN_DOMAIN_PATH="",'
+change_xml_cmd+=f'OCN_DOMAIN_FILE="{cesmexp.oceanfrac_file}"; '
+#change_xml_cmd+=f'ICE_DOMAIN_PATH="",'
+#change_xml_cmd+=f'ICE_DOMAIN_FILE="{cesmexp.oceanfrac_file}"'
 #change_xml_cmd+=f'RUN_STARTDATE={args.start_date}'
 
 if args.setup or args.run_all or not os.path.exists(args.case):
