@@ -14,18 +14,20 @@ logger = get_logger()
 
 experiment_dictionary = {
         'cam':{'compset':'F1850_CAM60_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'cam_clmcn':{'compset':'F1850_CAM60_CLM50%CN_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'cam_clmsp':{'compset':'F1850_CAM60_CLM50%SP_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'cam_dlnd':{'compset':'F1850_CAM60_DLND%SCPL_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'cam_clmcn_docn':{'compset':'F1850_CAM60_CLM50%CN_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'cam_clmsp_docn':{'compset':'F1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'cam_clmcn_pop':{'compset':'F1850_CAM60_CLM50%CN_SICE_POP2_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'cam_clmsp_pop':{'compset':'F1850_CAM60_CLM50%SP_SICE_POP2_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
-        'cam_clmsp_docn':{'compset':'F1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g17','custom':True},
+        'cam_clmCN':{'compset':'F1850_CAM60_CLM50%CN_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmSP':{'compset':'F1850_CAM60_CLM50%SP_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_dlndSCPL':{'compset':'F1850_CAM60_DLND%SCPL_SICE_SOCN_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmCN_docnDOM':{'compset':'F1850_CAM60_CLM50%CN_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmCN_docnSOM':{'compset':'F1850_CAM60_CLM50%CN_SICE_DOCN%SOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmSP_docnDOM':{'compset':'F1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmCN_pop':{'compset':'F1850_CAM60_CLM50%CN_SICE_POP2_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmSP_pop':{'compset':'F1850_CAM60_CLM50%SP_SICE_POP2_SROF_SGLC_SWAV','res':'f19_g16','custom':True},
+        'cam_clmSP_docnDOM':{'compset':'F1850_CAM60_CLM50%SP_SICE_DOCN%DOM_SROF_SGLC_SWAV','res':'f19_g17','custom':True},
         'aqua':{'compset':'2000_CAM60_SLND_SICE_DOCN%SOMAQP_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
         'baro':{'compset':'2000_CAM%DABIP04_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
         'moist_hs':{'compset':'1850_CAM%TJ16_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
         'dry_hs':{'compset':'1850_CAM%HS94_SLND_SICE_SOCN_SROF_SGLC_SWAV','res':'T42z30_T42_mg17','custom':True},
+        'E1850TEST':{'compset':'E1850TEST','res':'f19_g16','custom':True},
         }
 
 parser=argparse.ArgumentParser(description="Run CESM")
@@ -67,6 +69,8 @@ cesmexp = Experiment(gcm_type='cesm',
                      res=args.res,
                      exp_type=args.exp_type)
 
+cesmexp.docn_som_file = os.environ['ORIG_DOCN_SOM_FILE']
+
 args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
 
 modify_input_files(cesmexp,remap=args.remap,remap_hires=args.remap_hires)
@@ -80,16 +84,19 @@ logger.info(f'Using orbital year {args.orbit_year} B.P.')
 logger.info(f'Using solar constant {solar_constant(args.land_year)} W/m^2')
 
 sim_config = {}
-sim_config['atm'] = [f'bnd_topo="{cesmexp.topo_file}"',
-                     f"solar_irrad_data_file='{cesmexp.solar_file}'",
-                     f"co2vmr={args.co2_value}e-6",
-                     f"co2vmr_rad={args.co2_value}e-6"]
-#if args.step_type=='ndays':
-#    'nhtfrq=-24'
-#    'mfilt=365'
-#else:
-#    'nhtfrq=0'
-#    'mfilt=12'
+sim_config['atm'] = [
+        f'bnd_topo="{cesmexp.topo_file}"',
+        f"solar_irrad_data_file='{cesmexp.solar_file}'",
+        f"co2vmr={args.co2_value}e-6",
+        f"co2vmr_rad={args.co2_value}e-6",
+        ]
+
+if args.step_type=='ndays':
+    sim_config['atm'].append('nhtfrq=-24')
+    sim_config['atm'].append('mfilt=365')
+else:
+    sim_config['atm'].append('nhtfrq=0')
+    sim_config['atm'].append('mfilt=12')
 #f'use_topo_file=.true.'
 #f'state_debug_checks=.true.'
 #f'eul_divdampn=1.0' 
@@ -100,59 +107,60 @@ sim_config['atm'] = [f'bnd_topo="{cesmexp.topo_file}"',
 #f'use_rad_dt_cosz=.true.' 
 #f"prescribed_strataero_use_chemtrop=.false."
 
-sim_config['lnd'] = []
-#f"urban_hac='OFF'"
-#f'fsurdat="{cesmexp.landplant_file}"'
+sim_config['lnd'] = [
+        #f"urban_hac='OFF'",
+        #f'fsurdat="{cesmexp.landplant_file}"',
+        ]
 #f"glcmec_downscale_longwave=.false."
 #f"melt_non_icesheet_ice_runoff=.false."
 #f"use_subgrid_fluxes=.false."
 
-sim_config['ocn'] = []
-#f'overflows_on=.false.'
-#f'overflows_interactive=.false.'
-#f'ltidal_mixing=.false.'
-#f'lhoriz_varying_bckgrnd=.false.'
-'''
-#f'region_mask_file="{cesmexp.oceanmask_file}"'
-#f'region_info_file="{os.environ["OCEAN_REGION_MASK_FILE"]}"'
-#f'topography_file="{cesmexp.oceantopo_file}"'
-f"lat_aux_grid_type='user-specified'"
-f"lat_aux_begin=-90.0"
-f"lat_aux_end=90.0"
-f"n_lat_aux_grid=180"
-f"n_heat_trans_requested=.true."
-f"n_salt_trans_requested=.true."
-f"n_transport_reg=1"
-f"moc_requested=.true."
-f"dt_count=30"
-f'ldiag_velocity=.false.'
-f'bckgrnd_vdc1=0.524'
-f'bckgrnd_vdc2=0.313'
-f"sw_absorption_type='jerlov'"
-f'jerlov_water_type=3'
-f"chl_option='file'"
-f"chl_filename='unknown-chl'"
-f"chl_file_fmt='bin'"
-f"init_ts_option='mean'"
-#f"init_ts_option='ccsm_startup'"
-#f'init_ts_file="{cesmexp.init_ocean_file}"'
-f"init_ts_file_fmt='bin'"
-'''
+sim_config['ocn'] = [
+        #f'overflows_on=.false.',
+        #f'overflows_interactive=.false.',
+        #f'ltidal_mixing=.false.',
+        #f'lhoriz_varying_bckgrnd=.false.',
+        #f'region_mask_file="{cesmexp.oceanmask_file}"',
+        #f'region_info_file="{os.environ["OCEAN_REGION_MASK_FILE"]}"',
+        #f'topography_file="{cesmexp.oceantopo_file}"',
+        #f"lat_aux_grid_type='user-specified'",
+        #f"lat_aux_begin=-90.0",
+        #f"lat_aux_end=90.0",
+        #f"n_lat_aux_grid=180",
+        #f"n_heat_trans_requested=.true.",
+        #f"n_salt_trans_requested=.true.",
+        #f"n_transport_reg=1",
+        #f"moc_requested=.true.",
+        #f"dt_count=30",
+        #f'ldiag_velocity=.false.',
+        #f'bckgrnd_vdc1=0.524',
+        #f'bckgrnd_vdc2=0.313',
+        #f"sw_absorption_type='jerlov'",
+        #f'jerlov_water_type=3',
+        #f"chl_option='file'",
+        #f"chl_filename='unknown-chl'",
+        #f"chl_file_fmt='bin'",
+        #f"init_ts_option='mean'",
+        #f"init_ts_file_fmt='bin'",
+        #f"init_ts_option='ccsm_startup'",
+        #f'init_ts_file="{cesmexp.init_ocean_file}"',
+        ]
 
-sim_config['docn'] = []
-#f'domainfile="{cesmexp.oceanfrac_file}"'
-#f"mapmask='bothmask'"
-#f"atm2ocn_fmapname='{os.environ['CESM_MAP_FILE']}'"
+sim_config['docn'] = [
+        #f'domainfile="{cesmexp.oceanfrac_file}"',
+        ]
 
-sim_config['ice'] = []
-#f"ice_ic='none'"
-#f"xndt_dyn=2"
+sim_config['ice'] = [
+        f"ice_ic='none'",
+        f"xndt_dyn=2",
+        ]
 
-sim_config['cpl'] = []
-#'orb_mode="fixed_year"'
-#f'orb_iyear=1850'
-#f'orb_eccen={eccentricity(args.land_year)}'
-#f'orb_obliq={obliquity(args.land_year)}'
+sim_config['cpl'] = [
+        #f'orb_mode="fixed_year"',
+        #f'orb_iyear=1850',
+        #f'orb_eccen={eccentricity(args.land_year)}',
+        #f'orb_obliq={obliquity(args.land_year)}',
+        ]
 
 sim_config['xml_changes'] = [
         f'NTASKS={args.ntasks}',
@@ -167,6 +175,7 @@ sim_config['xml_changes'] = [
         f'ATM_DOMAIN_FILE="{cesmexp.landfrac_file}"',
         #f'LND_DOMAIN_PATH=""',
         #f'LND_DOMAIN_FILE="{cesmexp.landfrac_file}"',
+        #f'DOCN_SOM_FILENAME="{cesmexp.docn_som_file}"',
         #f'OCN_DOMAIN_PATH=""',
         #f'OCN_DOMAIN_FILE="{cesmexp.oceanfrac_file}"',
         #f'ICE_DOMAIN_PATH=""',
@@ -187,7 +196,7 @@ if args.setup or args.run_all or not os.path.exists(args.case):
     logger.info(f"Creating case: {create_case_cmd}")
     os.chdir(args.case)
     logger.info(f"Changing namelists")
-    edit_namelists(args.case,sim_config)
+    edit_namelists(cesmexp,sim_config)
     os.chdir(args.case)
     logger.info(f"Changing xml files: {sim_config['change_xml_cmd']}")
     os.system(sim_config['change_xml_cmd'])
