@@ -20,10 +20,10 @@ experiment_dictionary = {
 parser=argparse.ArgumentParser(description="Run CESM")
 parser.add_argument('-exp',default='cam_clmCN_docnDOM',
                     choices=[e for e in experiment_dictionary])
-parser.add_argument('-multiplier',default=1.0,type=float,help="CO2 Multiplier")
+parser.add_argument('-multiplier',default=1.0,type=float, help="CO2 Multiplier")
 parser.add_argument('-co2_value',default=None, help="CO2 Value")
-parser.add_argument('-sea_level',default=None, help="Sea level")
-parser.add_argument('-max_depth',default=None, help="Max ocean depth")
+parser.add_argument('-sea_level',default=0, type=float, help="Sea level")
+parser.add_argument('-max_depth',default=1000, type=float, help="Max ocean depth")
 parser.add_argument('-year',default=0,type=land_year_range,
                     metavar=f'[{min_land_year}-{max_land_year}]',
                     help="Years prior to current era in units of Ma")
