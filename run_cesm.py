@@ -6,7 +6,6 @@ from ecrlgcm.experiment import Experiment, Configuration
 
 import os
 import argparse
-import xml.etree.ElementTree as ET
 import numpy as np
 from datetime import date
 
@@ -23,15 +22,17 @@ parser.add_argument('-exp',default='cam_clmCN_docnDOM',
                     choices=[e for e in experiment_dictionary])
 parser.add_argument('-multiplier',default=1.0,type=float,help="CO2 Multiplier")
 parser.add_argument('-co2_value',default=None, help="CO2 Value")
-parser.add_argument('-land_year',default=0,type=land_year_range,
+parser.add_argument('-sea_level',default=None, help="Sea level")
+parser.add_argument('-max_depth',default=None, help="Max ocean depth")
+parser.add_argument('-year',default=0,type=land_year_range,
                     metavar=f'[{min_land_year}-{max_land_year}]',
                     help="Years prior to current era in units of Ma")
 parser.add_argument('-case',default='test',type=str)
-parser.add_argument('-ntasks',default=32,type=int)
+parser.add_argument('-ntasks',default=96,type=int)
 parser.add_argument('-nthrds',default=8,type=int)
 parser.add_argument('-start_date',default="0001-01-01")
 parser.add_argument('-step_type',default='ndays')
-parser.add_argument('-nsteps',default=3,type=int)
+parser.add_argument('-nsteps',default=60,type=int)
 parser.add_argument('-restart',default=False,action='store_true')
 parser.add_argument('-setup',default=False,action='store_true')
 parser.add_argument('-build',default=False,action='store_true')
@@ -51,24 +52,26 @@ else:
     args.compset = experiment_dictionary[args.exp]['compset']
     args.custom = experiment_dictionary[args.exp]['custom']
 
+if args.co2_value is None:
+    args.co2_value = args.multiplier*interpolate_co2(args.year)
+
 cesmexp = Experiment(gcm_type='cesm',
                      multiplier=args.multiplier,
-                     land_year=args.land_year,
+                     land_year=args.year,
                      res=args.res,
-                     exp_type=args.exp)
+                     exp_type=args.exp,
+                     sea_level=args.sea_level,
+                     max_depth=args.max_depth)
 
 args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
 
-modify_input_files(cesmexp,remap=args.remap,remap_hires=args.remap_hires)
-#regrid_domain_files(cesmexp)
-
-if args.co2_value is None:
-    args.co2_value = args.multiplier*interpolate_co2(args.land_year)
-
-args.orbit_year = args.land_year*10**6-date.today().year
+args.orbit_year = args.year*10**6-date.today().year
 logger.info(f'Using CO2 Value {args.co2_value} ppm')
 logger.info(f'Using orbital year {args.orbit_year} B.P.')
-logger.info(f'Using solar constant {solar_constant(args.land_year)} W/m^2')
+logger.info(f'Using solar constant {solar_constant(args.year)} W/m^2')
+
+modify_input_files(cesmexp,remap=args.remap,remap_hires=args.remap_hires)
+#regrid_domain_files(cesmexp)
 
 create_case_cmd=f'create_newcase --case {args.case} --res {args.res} --mach aws_c5 --compset {args.compset} --handle-preexisting-dirs r --output-root {os.environ["CIME_OUT_DIR"]}'
 
