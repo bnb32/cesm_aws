@@ -14,12 +14,14 @@ This repo is for setting up cesm on AWS.
    - Click on actions, networking, change security groups  
    - Select default group and assign group
 
-3. Clone cesm-aws repo to your cloud9 instance:    
-   - Modify environment variables in `environment.py`
+3. Clone cesm_aws and gcm_aws repos to your cloud9 instance:    
+   - Modify environment variables in `gcm_aws/eclrgcm/environment.py`
 
 4. Run the following commands to install packages and mount storage
 ```bash
-$ cd cesm_aws
+$ cd gcm_aws
+$ pip install -e . 
+$ cd ../cesm_aws
 $ pip install -e .
 $ bash ./go.sh  
 ```
