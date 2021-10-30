@@ -8,6 +8,7 @@ import os
 import argparse
 import numpy as np
 from datetime import date
+import time
 
 logger = get_logger()
 
@@ -32,7 +33,7 @@ parser.add_argument('-ntasks',default=96,type=int)
 parser.add_argument('-nthrds',default=8,type=int)
 parser.add_argument('-start_date',default="0001-01-01")
 parser.add_argument('-step_type',default='ndays')
-parser.add_argument('-nsteps',default=60,type=int)
+parser.add_argument('-nsteps',default=300,type=int)
 parser.add_argument('-restart',default=False,action='store_true')
 parser.add_argument('-setup',default=False,action='store_true')
 parser.add_argument('-build',default=False,action='store_true')
@@ -40,6 +41,7 @@ parser.add_argument('-run',default=False,action='store_true')
 parser.add_argument('-run_all',default=False,action='store_true')
 parser.add_argument('-remap',default=False,action='store_true')
 parser.add_argument('-remap_hires',default=False,action='store_true')
+parser.add_argument('-timing',default=False,action='store_true')
 args=parser.parse_args()
 
 cwd=os.getcwd()
@@ -111,7 +113,6 @@ if args.restart:
     cmd+=f'STOP_OPTION={args.step_type},'
     cmd+=f'REST_N={args.nsteps//5+1},'
     cmd+=f'STOP_N={args.nsteps}'
-    os.system(f'echo "use_init_interp = .true." >> {args.case}/user_nl_clm') 
     os.system(cmd)
     logger.info(f"Changing xml files: {cmd}")
 
@@ -122,4 +123,3 @@ if args.restart or args.run or args.run_all:
     except:
         logger.error("Error submitting case")
         exit()
-
