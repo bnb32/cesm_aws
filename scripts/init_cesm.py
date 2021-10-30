@@ -22,10 +22,11 @@ if args.download: os.system(cmd)
 cmd=f" cp {os.environ['CESM_REPO_DIR']}/SrcMods/config_machines.xml {os.environ['CESM_DIR']}/cime/config/cesm/machines/; "
 cmd+=f" cp {os.environ['CESM_REPO_DIR']}/SrcMods/config_compilers.xml {os.environ['CESM_DIR']}/cime/config/cesm/machines/; "
 cmd+=f" cp {os.environ['CESM_REPO_DIR']}/SrcMods/config_grids.xml {os.environ['CESM_DIR']}/cime/config/cesm/; "
+cmd+=f" cp {os.environ['CESM_REPO_DIR']}/SrcMods/controlMod.F90 {os.environ['CESM_DIR']}/components/clm/src/main/; "
 cmd+=f"mkdir -p {os.environ['CESM_INPUT_DATA_DIR']}; "
 
 os.system(cmd)
-logger.info("Copied modified xml files")
+logger.info("Copied modified xml and F90 files")
 
 with open(f"{os.environ['CESM_REPO_DIR']}/SrcMods/config_machines.xml", 'r') as f:
     CONFIG_MACHINES = f.read()

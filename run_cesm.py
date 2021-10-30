@@ -66,11 +66,15 @@ cesmexp = Experiment(gcm_type='cesm',
 args.case = f'{os.environ["CESM_REPO_DIR"]}/cases/{cesmexp.name}'
 
 args.orbit_year = args.year*10**6-date.today().year
+logger.info('**Starting experiment**')
 logger.info(f'Using CO2 Value {args.co2_value} ppm')
 logger.info(f'Using orbital year {args.orbit_year} B.P.')
 logger.info(f'Using solar constant {solar_constant(args.year)} W/m^2')
 
-modify_input_files(cesmexp,remap=args.remap,remap_hires=args.remap_hires)
+if not args.restart:
+    logger.info('**Modifying input files**')
+    modify_input_files(cesmexp,remap=args.remap,remap_hires=args.remap_hires)
+    logger.info('**Done modifying input files**')
 #regrid_domain_files(cesmexp)
 
 create_case_cmd=f'create_newcase --case {args.case} --res {args.res} --mach aws_c5 --compset {args.compset} --handle-preexisting-dirs r --output-root {os.environ["CIME_OUT_DIR"]}'
@@ -79,8 +83,10 @@ sim_config = Configuration(cesmexp,args)
 
 if args.custom: create_case_cmd+=' --run-unsupported'
 
-if args.setup or args.run_all or not os.path.exists(args.case):
+if args.setup or args.run_all:# or not os.path.exists(args.case):
+    logger.info(f'Removing case directory: {args.case}')
     os.system(f'rm -rf {args.case}')
+    logger.info(f'Removing output directory: {os.environ["CIME_OUT_DIR"]}/{cesmexp.name}')
     os.system(f'rm -rf {os.environ["CIME_OUT_DIR"]}/{cesmexp.name}')
 
     os.system(create_case_cmd)
@@ -105,6 +111,7 @@ if args.restart:
     cmd+=f'STOP_OPTION={args.step_type},'
     cmd+=f'REST_N={args.nsteps//5+1},'
     cmd+=f'STOP_N={args.nsteps}'
+    os.system(f'echo "use_init_interp = .true." >> {args.case}/user_nl_clm') 
     os.system(cmd)
     logger.info(f"Changing xml files: {cmd}")
 
