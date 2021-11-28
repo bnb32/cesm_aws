@@ -8,5 +8,5 @@ setup(
     description='for running cesm on aws',
     packages=['ecrlcesm'],
     package_dir={'ecrlcesm':'./ecrlcesm'},
-    install_requires=[]
+    install_requires=['ecrlgcm']
 )
